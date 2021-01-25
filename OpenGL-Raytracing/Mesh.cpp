@@ -10,7 +10,7 @@ Mesh::Mesh()
 
 Mesh::~Mesh()
 {
-
+	Clear();
 }
 
 void Mesh::Create(GLfloat* vertices, unsigned int* indices, unsigned int vertexCount, unsigned int indicesCount)
@@ -56,8 +56,8 @@ void Mesh::Render()
 	
 }
 
-void Mesh::Clear()
-{
+void Mesh::Clear() {
+
 	if (IBO != 0) {
 		glDeleteBuffers(1, &IBO);
 		IBO = 0;
@@ -74,5 +74,4 @@ void Mesh::Clear()
 	}
 
 	indexCount = 0;
-
 }

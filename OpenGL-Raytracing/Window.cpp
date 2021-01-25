@@ -33,8 +33,10 @@ void Window::Update()
 
 void Window::Clear()
 {
-	glClearColor(.2f, .2f, .2f, 1.f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClearColor(0.f, 0.f, 0.f, 0.001f);
+	glClear(GL_DEPTH_BUFFER_BIT); //
+	glClearColor(0.f, 0.f, 0.f, 0.f);
+	
 }
 
 bool Window::IsOpen()
@@ -189,4 +191,7 @@ void Window::Init() {
 	glfwSetWindowUserPointer(m_window, this);
 	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+	glEnable(GL_BLEND); //use alpha
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 }

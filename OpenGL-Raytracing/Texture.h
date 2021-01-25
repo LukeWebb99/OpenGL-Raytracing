@@ -18,6 +18,7 @@ public:
 	void Bind(const GLint textureUnit);
 	void Unbind();
 	void loadFromFile(const char* fileName);
+	void LoadCubeMap(const char* fileName);
 
 private:
 	GLuint id;

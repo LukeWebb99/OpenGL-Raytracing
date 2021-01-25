@@ -105,6 +105,11 @@ void Shader::Set1i(GLint value, const GLchar* name)
 	glUniform1i(glGetUniformLocation(this->shaderID, name), value);
 }
 
+void Shader::Set2f(glm::vec2 value, const GLchar* name)
+{
+   glUniform2fv(glGetUniformLocation(shaderID, name), 1, glm::value_ptr(value));
+}
+
 void Shader::SetVec3f(glm::fvec3 value, const GLchar* name)
 {
 	glUniform3fv(glGetUniformLocation(shaderID, name), 1, glm::value_ptr(value));
@@ -122,15 +127,15 @@ void Shader::QueryWorkgroups()
 	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_grp_size[0]);
 	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_grp_size[1]);
 	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_grp_size[2]);
-	printf("max global (total) work group size x:%i y:%i z:%i\n", work_grp_size[0], work_grp_size[1], work_grp_size[2]);
+	//printf("max global (total) work group size x:%i y:%i z:%i\n", work_grp_size[0], work_grp_size[1], work_grp_size[2]);
 	// maximum local work group (one shader's slice)
 	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_grp_size[0]);
 	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_grp_size[1]);
 	glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_grp_size[2]);
-	printf("max local (in one shader) work group sizes x:%i y:%i z:%i\n", work_grp_size[0], work_grp_size[1], work_grp_size[2]);
+	//printf("max local (in one shader) work group sizes x:%i y:%i z:%i\n", work_grp_size[0], work_grp_size[1], work_grp_size[2]);
 	// maximum compute shader invocations (x * y * z)
 	glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &work_grp_inv);
-	printf("max computer shader invocations %i\n", work_grp_inv);
+	//printf("max computer shader invocations %i\n", work_grp_inv);
 }
 
 void Shader::CompileShader(const char* vertexShader, const char* fragmentShader)

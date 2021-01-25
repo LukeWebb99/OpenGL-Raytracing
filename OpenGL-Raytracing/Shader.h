@@ -27,10 +27,13 @@ public:
 	void Bind();
 	void Unbind();
 
+	GLuint GetShaderID() { return shaderID; };
+
 	void ClearShader();
 	
 	void Set1f(GLfloat value, const GLchar* name);
 	void Set1i(GLint value, const GLchar* name);
+	void Set2f(glm::vec2 value, const GLchar* name);
 	void SetVec3f(glm::fvec3 value, const GLchar* name);
 	void SetVec4f(glm::vec4 value, const GLchar* name);
 	void SetUniformMat4f(const char* uniformName, glm::mat4 value, bool transpose);

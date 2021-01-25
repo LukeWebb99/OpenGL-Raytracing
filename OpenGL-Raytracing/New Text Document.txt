@@ -1,0 +1,22 @@
+[Working & Added] 
+   - Ray-Tracing to a texture
+   - Load Skybox using HDR Image
+   - Interception with basic geometry
+   - Material system
+   - 1 : 1 Reflections
+   - Anti-aliasing
+   - Directional Light
+   - Point Light
+   - Hard Shadows 
+   - Basic Face Culling
+
+[In Development]
+   - Spot Light
+      - Soft Spot Light 
+      - Stencil
+    Model Loading
+   
+[Researching] 
+   - Textures Mapping
+   - Soft Shadows 
+   - Material Roughtness
