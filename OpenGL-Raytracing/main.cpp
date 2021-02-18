@@ -107,7 +107,7 @@ struct SpotLight {
 	glm::vec3  m_Direction;
 	glm::vec3 m_Colour;
 	float m_CutOff;
-	float m_OuterCuttoff;
+	float m_OuterCutOff;
 	float m_Intensity;
 };
 
@@ -137,6 +137,7 @@ int main() {
 	spotlight.m_Position = { 0, 15, 0 };
 	spotlight.m_Direction = glm::vec3(0, -1, 0);
 	spotlight.m_CutOff = glm::cos(glm::radians(12.5f));
+	spotlight.m_OuterCutOff = glm::cos(glm::radians(15.5f));
 	spotlight.m_Intensity = 0.f;
 
 	Sphere sphere;
@@ -177,15 +178,15 @@ int main() {
 	}
 	
 	pointLights[1].m_Position = glm::vec4(-4, 6, 0, 0);
-	pointLights[1].m_Colour = glm::vec4(1, 0, 0, Random::Get().Int(0, 25));
+	pointLights[1].m_Colour = glm::vec4(1, 0, 0, Random::Get().Int(0, 100));
 
 	pointLights[2].m_Position = glm::vec4(4, 6, 0, 0);
-	pointLights[2].m_Colour = glm::vec4(0, 1, 0, Random::Get().Int(0, 25));
+	pointLights[2].m_Colour = glm::vec4(0, 1, 0, Random::Get().Int(0, 100));
 
 	pointLights[3].m_Position = glm::vec4(0, 6, 0, 0);
-	pointLights[3].m_Colour = glm::vec4(0, 0, 1, Random::Get().Int(0, 25));
+	pointLights[3].m_Colour = glm::vec4(0, 0, 1, Random::Get().Int(0, 100));
 
-	unsigned int pointlightUBO;
+	unsigned int pointlightUBO;  //Pointlights Uniform Buffer Object 
 	glGenBuffers(1, &pointlightUBO);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
@@ -193,33 +194,43 @@ int main() {
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glBindBufferRange(GL_UNIFORM_BUFFER, 0, pointlightUBO, 0, sizeof(PointLight));
 
-    // Uniform values
-	int bounceLimit = 5; 
-	float u_testFloat = 0;
+	glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
+	for (size_t i = 0; i < pointLights.size(); i++) {
+
+		glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i), sizeof(glm::vec4), &pointLights[i].m_Colour);
+		glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i) + sizeof(glm::vec4), sizeof(glm::vec4), &pointLights[i].m_Position);
+
+	}
+
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    // Uniform values 
+	int bounceLimit = 5; //ray bounce limit
 
 	bool togglePlane = false;
 	bool toggleShadows = false;
 	
 	float u_sample = 0;
-	int maxSample = 50;
+	int maxSample = 100;
 	bool sampleReset = false;
 
 	glm::vec3 lastCameraPos, lastCameraDir;
 
-	glm::vec3 u_pointLightPosition(0.f);
-	glm::vec3 u_pointLightColour(0.25f);
-
 	float u_metallic = 0.2f, u_ao = 0.3f, u_roughness = 0.1;
-	float u_Cutoff = 12.5; float u_OuterCutoff = 17.5;
+
 	while (window.IsOpen()) {
 	
 		window.Clear();
 		lastCameraDir = camera.getCameraDirection();
 		lastCameraPos = camera.GetCameraPosition();
+
 		if (window.UpdateOnFocus()) {
 			camera.mouseControl(window.GetXChange(), window.GetYChange());
 			camera.keyControl(window.GetsKeys(), window.GetDeltaTime());
 			sampleReset = false;
+		}
+		else {
+			sampleReset = true;
 		}
 
 		// launch compute shaders
@@ -234,24 +245,23 @@ int main() {
 		compute.Set1i(togglePlane, "u_togglePlane");
 		compute.Set1f(Random::Get().Float(0, 10, 0.1f), "u_seed");
 		compute.Set1i(bounceLimit, "u_rayBounceLimit");
+
 		compute.Set1f(u_metallic, "u_metallic");
 		compute.Set1f(u_roughness, "u_roughness");
 		compute.Set1f(u_ao, "u_ao");
+
 		compute.SetVec3f(spotlight.m_Position, "u_spotlightPos");
 		compute.SetVec3f(spotlight.m_Direction, "u_spotlightDir");
-		compute.Set1f(glm::cos(glm::radians(u_Cutoff)), "u_spotlightCuttoff");
-		compute.Set1f(glm::cos(glm::radians(u_OuterCutoff)), "u_spotlightOuterCuttoff");
+		compute.Set1f(glm::cos(glm::radians(spotlight.m_CutOff)), "u_spotlightCuttoff");
+		compute.Set1f(glm::cos(glm::radians(spotlight.m_OuterCutOff)), "u_spotlightOuterCuttoff");
 		compute.Set1f(spotlight.m_Intensity, "u_spotlightIntensity");
 		compute.SetVec3f(spotlight.m_Colour, "u_spotlightColour");
 
 		glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
-		for (size_t i = 0; i < pointLights.size(); i++) {
-
+		for (size_t i = 0; i < 1; i++) {
 			glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i), sizeof(glm::vec4), &pointLights[i].m_Colour);
 			glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i) + sizeof(glm::vec4), sizeof(glm::vec4), &pointLights[i].m_Position);
-
 		}
-
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		compute.SetVec4f(glm::vec4(directionalLight.CalculateDirection(), directionalLight.m_intensity), "u_directionalLight");
@@ -288,15 +298,15 @@ int main() {
 			ImGui::LabelText("", "Point Light");
 			ImGui::DragFloat4("PL Position", (float*)&pointLights[0].m_Position, 0.1);
 			ImGui::ColorEdit4("PL Colour", (float*)&pointLights[0].m_Colour);
-			ImGui::DragFloat("PL Intensity", &pointLights[0].m_Colour.w);
+			ImGui::DragFloat("PL Intensity", &pointLights[0].m_Colour.w, 1.f, 0.f, 100.f);
 			
 			ImGui::LabelText("", "Spot Light ");
 			ImGui::DragFloat3("SL Position", (float*)&spotlight.m_Position, 0.1);
 			ImGui::DragFloat3("SL Direction", (float*)&spotlight.m_Direction, 0.1);
 			ImGui::ColorEdit3("SL Colour", (float*)&spotlight.m_Colour);
-			ImGui::DragFloat("SL Cutoff", &u_Cutoff, 0.1);
-			ImGui::DragFloat("SL OuterCutoff", &u_OuterCutoff, 0.1);
-			ImGui::DragFloat("SL Intensity", &spotlight.m_Intensity, 0.1);
+			ImGui::DragFloat("SL Cutoff", &spotlight.m_CutOff, 0.1);
+			ImGui::DragFloat("SL OuterCutoff", &spotlight.m_OuterCutOff, 0.1);
+			ImGui::DragFloat("SL Intensity", &spotlight.m_Intensity, 0.1, 0.f, 100.f);
 
 			ImGui::Checkbox("Toggle Plane", &togglePlane);
 			ImGui::Checkbox("Toggle Shadow", &toggleShadows);

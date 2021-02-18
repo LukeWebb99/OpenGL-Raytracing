@@ -374,7 +374,7 @@ vec3 CalculatePointLights(vec3 albedo, vec3 origin, vec3 position, vec3 normal){
 
                // add to outgoing radiance Lo
                float NdotL = max(dot(N, L), 0.0);                
-               Lo += (kD * albedo / PI + specular) * radiance * NdotL * albedo * u_pointLights[i].colour.w*u_pointLights[i].colour.w; 
+               Lo += (kD * albedo / PI + specular) * radiance * NdotL * (u_pointLights[i].colour.w*u_pointLights[i].colour.w); 
 
            }
            vec3 ambient = vec3(0.3) * albedo * u_ao;
@@ -434,12 +434,12 @@ vec3 Shade(inout Ray ray, RayHit hit) {
 
        if(hit.roughtness < 249.9){
           ray.origin = hit.position + hit.normal * 0.001f;
-          ray.direction = reflect(ray.direction, hit.normal) + vec3(rand()*hit.roughtness*0.001, rand()*hit.roughtness*0.001, rand()*hit.roughtness*0.001);
-          ray.energy *=  hit.specular * sdot(hit.normal, ray.direction, 1) * rColour;
+          ray.direction = reflect(ray.direction, hit.normal) + vec3(rand()* u_roughness, rand()* u_roughness, rand()* u_roughness);
+          ray.energy *=  hit.albedo * sdot(hit.normal, ray.direction, 2) * hit.specular  * rColour;
        } else {
            ray.origin = hit.position + hit.normal * 0.001f;
            ray.direction = vec3(0.f);
-           ray.energy *=  hit.specular * rColour;
+           ray.energy *=  hit.albedo * hit.specular  * rColour ;
        }
 
        return vec3(0.f);
@@ -449,7 +449,6 @@ vec3 Shade(inout Ray ray, RayHit hit) {
         hitsky = true;
         float theta = acos(ray.direction.y) / -PI;
         float phi = atan(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
-       
         //return vec3(textureLod(u_skyboxTexture, vec2(-phi, -theta), 3)); 
         return vec3(texture(u_skyboxTexture, vec2(-phi, -theta)).xyz);
     }
