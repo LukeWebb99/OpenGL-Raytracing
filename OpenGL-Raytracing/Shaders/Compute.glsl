@@ -38,6 +38,8 @@ uniform int u_rayBounceLimit;
 //uniform int u_indciesSize;
 //uniform int u_indices[MAX_INDICES_ARRAY_SIZE];
 
+uniform sampler2D albedoMap;
+
 //POINT LIGHT
 uniform float u_metallic;
 uniform float u_ao;
@@ -425,7 +427,7 @@ vec3 Shade(inout Ray ray, RayHit hit) {
            return vec3(0.f);
        }
 
-      vec3 rColour = vec3(0, 0, 0);
+      vec3 rColour = vec3(1.f);
       rColour += CalculateDirectLight(hit);
       rColour += CalculatePointLights(hit.albedo, ray.origin, hit.position, hit.normal);
       rColour += CalculateSpotLights(hit);
@@ -433,7 +435,7 @@ vec3 Shade(inout Ray ray, RayHit hit) {
        if(hit.roughtness < 249.9){
           ray.origin = hit.position + hit.normal * 0.001f;
           ray.direction = reflect(ray.direction, hit.normal) + vec3(rand()*hit.roughtness*0.001, rand()*hit.roughtness*0.001, rand()*hit.roughtness*0.001);
-          ray.energy *=  hit.specular * rColour * sdot(hit.normal, ray.direction, 1);
+          ray.energy *=  hit.specular * sdot(hit.normal, ray.direction, 1) * rColour;
        } else {
            ray.origin = hit.position + hit.normal * 0.001f;
            ray.direction = vec3(0.f);

@@ -164,7 +164,7 @@ int main() {
 	
 	//https://hdrihaven.com/hdris/
 	//cape_hill_4k.hdr // urban_alley_01_4k.hdr //herkulessaulen_8k.hdr
-	Texture skybox("Textures/urban_alley_01_4k.hdr"); // Load skyobx
+	Texture skybox("Textures/SkyboxHDRs/urban_alley_01_4k.hdr"); // Load skyobx
 	skybox.Bind(1);// Bind to second tex slot
 	
 	std::vector<PointLight> pointLights;
@@ -177,13 +177,13 @@ int main() {
 	}
 	
 	pointLights[1].m_Position = glm::vec4(-4, 6, 0, 0);
-	pointLights[1].m_Colour = glm::vec4(1, 0, 0, Random::Get().Int(25, 100));
+	pointLights[1].m_Colour = glm::vec4(1, 0, 0, Random::Get().Int(0, 25));
 
 	pointLights[2].m_Position = glm::vec4(4, 6, 0, 0);
-	pointLights[2].m_Colour = glm::vec4(0, 1, 0, Random::Get().Int(25, 100));
+	pointLights[2].m_Colour = glm::vec4(0, 1, 0, Random::Get().Int(0, 25));
 
 	pointLights[3].m_Position = glm::vec4(0, 6, 0, 0);
-	pointLights[3].m_Colour = glm::vec4(0, 0, 1, Random::Get().Int(25, 100));
+	pointLights[3].m_Colour = glm::vec4(0, 0, 1, Random::Get().Int(0, 25));
 
 	unsigned int pointlightUBO;
 	glGenBuffers(1, &pointlightUBO);
@@ -208,6 +208,7 @@ int main() {
 
 	glm::vec3 u_pointLightPosition(0.f);
 	glm::vec3 u_pointLightColour(0.25f);
+
 	float u_metallic = 0.2f, u_ao = 0.3f, u_roughness = 0.1;
 	float u_Cutoff = 12.5; float u_OuterCutoff = 17.5;
 	while (window.IsOpen()) {
@@ -243,7 +244,6 @@ int main() {
 		compute.Set1f(spotlight.m_Intensity, "u_spotlightIntensity");
 		compute.SetVec3f(spotlight.m_Colour, "u_spotlightColour");
 
-
 		glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
 		for (size_t i = 0; i < pointLights.size(); i++) {
 
@@ -251,6 +251,7 @@ int main() {
 			glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i) + sizeof(glm::vec4), sizeof(glm::vec4), &pointLights[i].m_Position);
 
 		}
+
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		compute.SetVec4f(glm::vec4(directionalLight.CalculateDirection(), directionalLight.m_intensity), "u_directionalLight");
