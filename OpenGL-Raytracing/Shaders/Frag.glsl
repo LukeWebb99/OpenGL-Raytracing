@@ -12,6 +12,6 @@ uniform sampler2D u_TextureA;
           
 void main() {      
 //0.1f / (u_sample + 1.0f)
-    colour = vec4(texture(u_TextureA, vs_texcoord).xyz, 1.f / (u_sample + 1.f));
+    colour = vec4(texture(u_TextureA, vs_texcoord).xyz, (1.f / (u_sample + 1.f)));
     
 }

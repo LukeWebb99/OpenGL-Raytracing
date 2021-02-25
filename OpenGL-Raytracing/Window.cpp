@@ -20,7 +20,6 @@ Window::~Window()
 void Window::Update()
 {
 	glfwPollEvents();
-	glfwSwapBuffers(m_window);
 	glfwGetFramebufferSize(m_window, &m_bufferWidth, &m_bufferHeight);
 	glViewport(0, 0, m_bufferWidth, m_bufferHeight);
 
@@ -34,8 +33,9 @@ void Window::Update()
 void Window::Clear()
 {
 	//glClearColor(0.f, 0.f, 0.f, 0.001f);
-	glClear(GL_DEPTH_BUFFER_BIT); //
+	glfwSwapBuffers(m_window);
 	glClearColor(0.f, 0.f, 0.f, 0.f);
+	glClear(GL_DEPTH_BUFFER_BIT); //
 	
 }
 
@@ -193,5 +193,4 @@ void Window::Init() {
 
 	glEnable(GL_BLEND); //use alpha
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
 }

@@ -24,11 +24,11 @@ void Camera::keyControl(bool* keys, GLfloat deltaTime)
 	GLfloat velocity = -moveSpeed * deltaTime;
 
 
-	if (keys[GLFW_KEY_E]) {
+	if (keys[GLFW_KEY_Q]) {
 		position.y += velocity;
 	}
 
-	if (keys[GLFW_KEY_Q]) {
+	if (keys[GLFW_KEY_E]) {
 		position.y -= velocity;
 	}
 

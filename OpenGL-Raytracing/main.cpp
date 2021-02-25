@@ -211,7 +211,7 @@ int main() {
 	bool toggleShadows = false;
 	
 	float u_sample = 0;
-	int maxSample = 100;
+	int maxSample = 1000;
 	bool sampleReset = false;
 
 	glm::vec3 lastCameraPos, lastCameraDir;
@@ -220,7 +220,7 @@ int main() {
 
 	while (window.IsOpen()) {
 	
-		window.Clear();
+		window.Update();
 		lastCameraDir = camera.getCameraDirection();
 		lastCameraPos = camera.GetCameraPosition();
 
@@ -279,7 +279,7 @@ int main() {
 			ImGui::Text("Application average %.2f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::SliderFloat("FOV", camera.GetFOVptr(), 0, 174.9);
 			
-			ImGui::SliderInt("Max Smaple", &maxSample, 0, 100);
+			ImGui::SliderInt("Max Smaple", &maxSample, 0, 10000);
 			ImGui::Checkbox("Reset Sample", &sampleReset);
             ImGui::SliderInt("BounceLimit", &bounceLimit, 0, 10);
 
@@ -331,11 +331,11 @@ int main() {
 		else if (u_sample < maxSample) {
 			u_sample += 1.f;
 		}
-	    
+    
 		glUseProgram(0);
 		GuiLayer.End();
-		window.Update();
 		
+		window.Clear();
 	}
 	
 
