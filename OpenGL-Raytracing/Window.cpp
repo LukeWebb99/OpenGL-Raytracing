@@ -34,8 +34,8 @@ void Window::Clear()
 {
 	//glClearColor(0.f, 0.f, 0.f, 0.001f);
 	glfwSwapBuffers(m_window);
-	glClearColor(0.f, 0.f, 0.f, 0.f);
 	glClear(GL_DEPTH_BUFFER_BIT); //
+	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
 	
 }
 

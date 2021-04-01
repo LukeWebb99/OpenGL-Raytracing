@@ -36,7 +36,7 @@ public:
 	void Set2f(glm::vec2 value, const GLchar* name);
 	void SetVec3f(glm::fvec3 value, const GLchar* name);
 	void SetVec4f(glm::vec4 value, const GLchar* name);
-	void SetUniformMat4f(const char* uniformName, glm::mat4 value, bool transpose);
+	void SetMat4f(const char* uniformName, glm::mat4 value, bool transpose);
 
 	void QueryWorkgroups();
 

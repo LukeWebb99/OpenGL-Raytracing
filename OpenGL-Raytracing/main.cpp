@@ -35,7 +35,7 @@ void PrintVec3(glm::vec3 v) {
 		<< " z: " << v.z << "\n";
 }
 
-GLfloat quadVerts[] = {
+GLfloat quadVerts[] =  {
 	-1.f,   1.f, 0.0f,  1.0f, 0.0f,  0.0f, 0.0f, 1.0f,
 	-1.f,  -1.f, 0.0f,  1.0f, 1.0f,  0.0f, 0.0f, 1.0f,
 	 1.0f, -1.f, 0.0f,  0.0f, 1.0f,  0.0f, 0.0f, 1.0f,
@@ -102,20 +102,43 @@ struct PointLight {
 	glm::vec4 m_Position;
 };
 
-struct SpotLight {
-	glm::vec3  m_Position;
-	glm::vec3  m_Direction;
-	glm::vec3 m_Colour;
-	float m_CutOff;
-	float m_OuterCutOff;
-	float m_Intensity;
-};
+Texture skybox("Textures/SkyboxHDRs/cape_hill_4k.hdr"); // Load skyobx
+
+Texture Albedo   ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Albedo_4K__schvfgwp.jpg");
+Texture Normal   ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Normal_4K__schvfgwp.jpg");
+Texture Roughness("Textures/PBR/Gold (Au)_schvfgwp_Metal/Roughness_4K__schvfgwp.jpg");
+Texture AO       ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Metalness_4K__schvfgwp.jpg");
+Texture Metallic ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Metalness_4K__schvfgwp.jpg");
+
+/*
+Texture Albedo   ("Textures/PBR/Dirty Metal Sheet/Albedo_4K__vbsieik.jpg");
+Texture Normal   ("Textures/PBR/Dirty Metal Sheet/Normal_4K__vbsieik.jpg");
+Texture Roughness("Textures/PBR/Dirty Metal Sheet/Roughness_4K__vbsieik.jpg");
+Texture AO       ("Textures/PBR/Dirty Metal Sheet/AO_4K__vbsieik.jpg");
+Texture Metallic ("Textures/PBR/Dirty Metal Sheet/Roughness_4K__vbsieik.jpg");
+*/
+
+/*
+Texture Albedo   ("Textures/PBR/rustediron1-alt2-bl/rustediron2_basecolor.png");
+Texture Normal   ("Textures/PBR/rustediron1-alt2-bl/rustediron2_normal.png");
+Texture Roughness("Textures/PBR/rustediron1-alt2-bl/rustediron2_roughness.png");
+Texture AO       ("Textures/PBR/rustediron1-alt2-bl/rustediron2_ao.png");
+Texture Metallic ("Textures/PBR/rustediron1-alt2-bl/rustediron2_metallic.png");
+*/
+
 
 int main() {
+
+
 
 	Window window("Window", true, 1460, 768);
 	GuiLayer GuiLayer("Window?", window.GetWindow());
 	
+	//https://hdrihaven.com/hdris/
+    //cape_hill_4k.hdr // urban_alley_01_4k.hdr //herkulessaulen_8k.hdr
+
+	skybox.CreateHDRI();
+
 	Camera camera({ 0.f, 0.f, 0.f }, { 0.f, -1.f, 0.f }, 0, 0, 1, 1, 90.f);
 
 	Shader shader; 
@@ -124,21 +147,11 @@ int main() {
 	Shader compute; 
 	compute.CreateFromFile("Shaders/Compute.glsl");
 	//compute.QueryWorkgroups();
-	compute.Bind();
-	compute.Set1i(1, "u_skyboxTexture");
 
 	Mesh obj;
 	obj.Create(quadVerts, quadIndices, 32, 6); 
 
 	DirectionalLight directionalLight({0,0,0}, 0);
-
-	SpotLight spotlight;
-	spotlight.m_Colour = { 0.8, 0.8, 0.8 };
-	spotlight.m_Position = { 0, 15, 0 };
-	spotlight.m_Direction = glm::vec3(0, -1, 0);
-	spotlight.m_CutOff = glm::cos(glm::radians(12.5f));
-	spotlight.m_OuterCutOff = glm::cos(glm::radians(15.5f));
-	spotlight.m_Intensity = 0.f;
 
 	Sphere sphere;
 	sphere.position = glm::vec3(0.f, 3.f, 0.f);
@@ -146,6 +159,8 @@ int main() {
 	sphere.specular = glm::vec3(0.8);
 	sphere.albedo = glm::vec3(0.2);
 	sphere.roughtness = 0;
+
+	compute.Bind();
 
 	GLuint tex_output = 0; //TODO move this into texture class
 	int tex_w = window.GetBufferWidth(), tex_h = window.GetBufferHeight(); { // create the texture
@@ -155,37 +170,30 @@ int main() {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		// linear allows us to scale the window up retaining reasonable quality
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		// same internal format as compute shader input
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex_w, tex_h, 0, GL_RGBA, GL_FLOAT, NULL);
 		// bind to image unit so can write to specific pixels from the shader
 		glBindImageTexture(0, tex_output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 	}
 	
-	//https://hdrihaven.com/hdris/
-	//cape_hill_4k.hdr // urban_alley_01_4k.hdr //herkulessaulen_8k.hdr
-	Texture skybox("Textures/SkyboxHDRs/urban_alley_01_4k.hdr"); // Load skyobx
-	skybox.Bind(1);// Bind to second tex slot
+
+	Albedo.CreateTexture2D();
+	Normal.CreateTexture2D();
+	Roughness.CreateTexture2D();
+	AO.CreateTexture2D();
+	Metallic.CreateTexture2D();
 	
 	std::vector<PointLight> pointLights;
 
 	for (size_t i = 0; i < 4; i++) {
 		PointLight tempLight;
-		tempLight.m_Position = glm::vec4(0, 0, 0, 0);
-		tempLight.m_Colour = glm::vec4(1, 1, 1, 10);
+		tempLight.m_Position = glm::vec4(0, 100, 0, 0);
+		tempLight.m_Colour = glm::vec4(1, 1, 1, 0);
 		pointLights.push_back(tempLight);
 	}
 	
-	pointLights[1].m_Position = glm::vec4(-4, 6, 0, 0);
-	pointLights[1].m_Colour = glm::vec4(1, 0, 0, Random::Get().Int(0, 100));
-
-	pointLights[2].m_Position = glm::vec4(4, 6, 0, 0);
-	pointLights[2].m_Colour = glm::vec4(0, 1, 0, Random::Get().Int(0, 100));
-
-	pointLights[3].m_Position = glm::vec4(0, 6, 0, 0);
-	pointLights[3].m_Colour = glm::vec4(0, 0, 1, Random::Get().Int(0, 100));
-
 	unsigned int pointlightUBO;  //Pointlights Uniform Buffer Object 
 	glGenBuffers(1, &pointlightUBO);
 
@@ -201,18 +209,28 @@ int main() {
 		glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i) + sizeof(glm::vec4), sizeof(glm::vec4), &pointLights[i].m_Position);
 
 	}
-
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+	compute.Set1i(1, "u_skyboxTexture");
+	compute.Set1i(2, "u_AlbedoMap");
+	compute.Set1i(3, "u_NormalMap");
+	compute.Set1i(4, "u_RoughnessMap");
+	compute.Set1i(5, "u_AOMap");
+	compute.Set1i(6, "u_MetallicMap");
+
+	skybox.Bind(1);
+	Albedo.Bind(2);
+	Normal.Bind(3);
+	Roughness.Bind(4);
+	AO.Bind(5);
+	Metallic.Bind(6);
+
     // Uniform values 
-	int bounceLimit = 5; //ray bounce limit
+	int bounceLimit = 3; //ray bounce limit
 
 	bool togglePlane = false;
-	bool toggleShadows = false;
-	
 	float u_sample = 0;
-	int maxSample = 1000;
-	bool sampleReset = false;
+	bool noSample = false;
 
 	glm::vec3 lastCameraPos, lastCameraDir;
 
@@ -227,38 +245,23 @@ int main() {
 		if (window.UpdateOnFocus()) {
 			camera.mouseControl(window.GetXChange(), window.GetYChange());
 			camera.keyControl(window.GetsKeys(), window.GetDeltaTime());
-			sampleReset = false;
-		}
-		else {
-			sampleReset = true;
 		}
 
 		// launch compute shaders
 		compute.Bind();
-		camera.GetCameraPosition();
+
 		// Set uniforms for compute shader
-		compute.SetUniformMat4f("u_cameraToWorld", camera.CalculateViewMatrix(), true);
-		compute.SetUniformMat4f("u_cameraInverseProjection", glm::inverse(camera.CalculateProjectionMatrix(window.GetBufferWidth(), window.GetBufferHeight())), false);
-		
-		compute.Set2f(glm::vec2(Random::Get().Float(0, 10, 0.1f), Random::Get().Float(0, 10, 0.1f)), "u_pixelOffset");
-		compute.Set1i(toggleShadows, "u_toggleShadow");
+		compute.SetMat4f("u_cameraToWorld", camera.CalculateViewMatrix(), true);
+		compute.SetMat4f("u_cameraInverseProjection", glm::inverse(camera.CalculateProjectionMatrix(window.GetBufferWidth(), window.GetBufferHeight())), false);
+		compute.Set2f(glm::vec2(Random::Get().Int(0, 1), Random::Get().Int(0, 1)), "u_pixelOffset");
 		compute.Set1i(togglePlane, "u_togglePlane");
-		compute.Set1f(Random::Get().Float(0, 10, 0.1f), "u_seed");
+		compute.Set1f(Random::Get().Int(0, 1000), "u_seed");
 		compute.Set1i(bounceLimit, "u_rayBounceLimit");
 
-		compute.Set1f(u_metallic, "u_metallic");
-		compute.Set1f(u_roughness, "u_roughness");
-		compute.Set1f(u_ao, "u_ao");
 
-		compute.SetVec3f(spotlight.m_Position, "u_spotlightPos");
-		compute.SetVec3f(spotlight.m_Direction, "u_spotlightDir");
-		compute.Set1f(glm::cos(glm::radians(spotlight.m_CutOff)), "u_spotlightCuttoff");
-		compute.Set1f(glm::cos(glm::radians(spotlight.m_OuterCutOff)), "u_spotlightOuterCuttoff");
-		compute.Set1f(spotlight.m_Intensity, "u_spotlightIntensity");
-		compute.SetVec3f(spotlight.m_Colour, "u_spotlightColour");
 
 		glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
-		for (size_t i = 0; i < 1; i++) {
+		for (size_t i = 0; i < 4; i++) {
 			glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i), sizeof(glm::vec4), &pointLights[i].m_Colour);
 			glBufferSubData(GL_UNIFORM_BUFFER, (sizeof(PointLight) * i) + sizeof(glm::vec4), sizeof(glm::vec4), &pointLights[i].m_Position);
 		}
@@ -277,39 +280,55 @@ int main() {
 
 			ImGui::Begin("GUI");
 			ImGui::Text("Application average %.2f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::SliderFloat("FOV", camera.GetFOVptr(), 0, 174.9);
-			
-			ImGui::SliderInt("Max Smaple", &maxSample, 0, 10000);
-			ImGui::Checkbox("Reset Sample", &sampleReset);
-            ImGui::SliderInt("BounceLimit", &bounceLimit, 0, 10);
 
-			ImGui::LabelText("", "Sphere");
-			ImGui::ColorEdit3("Specular", (float*)&sphere.specular);
-			ImGui::ColorEdit3("Albedo", (float*)&sphere.albedo);
-			ImGui::SliderFloat("roughtness", &sphere.roughtness, 0, 250, "", 1.f);
-			ImGui::DragFloat("u_metallic", &u_metallic, 0.01, 0, 1.f);
-			ImGui::DragFloat("u_ao", &u_ao, 0.01, 0, 1.f);
-			ImGui::DragFloat("u_roughness", &u_roughness, 0.01, 0, 1.f);
+			if (ImGui::CollapsingHeader("Renderer Options")) {
+				ImGui::SliderInt("BounceLimit", &bounceLimit, 0, 10);
+				ImGui::Checkbox("No Sample", &noSample);
+			}
 
-			ImGui::LabelText("", "Directional Light");
-			ImGui::DragFloat3("Light Rotation", (float*)&directionalLight.m_rotation, 0.1);
-			ImGui::DragFloat("Directional Light Intensity", &directionalLight.m_intensity);
+			if (ImGui::CollapsingHeader("Camera Options")) {
+				ImGui::SliderFloat("FOV", camera.GetFOVptr(), 0, 174.9);
+			}
 
-			ImGui::LabelText("", "Point Light");
-			ImGui::DragFloat4("PL Position", (float*)&pointLights[0].m_Position, 0.1);
-			ImGui::ColorEdit4("PL Colour", (float*)&pointLights[0].m_Colour);
-			ImGui::DragFloat("PL Intensity", &pointLights[0].m_Colour.w, 1.f, 0.f, 100.f);
-			
-			ImGui::LabelText("", "Spot Light ");
-			ImGui::DragFloat3("SL Position", (float*)&spotlight.m_Position, 0.1);
-			ImGui::DragFloat3("SL Direction", (float*)&spotlight.m_Direction, 0.1);
-			ImGui::ColorEdit3("SL Colour", (float*)&spotlight.m_Colour);
-			ImGui::DragFloat("SL Cutoff", &spotlight.m_CutOff, 0.1);
-			ImGui::DragFloat("SL OuterCutoff", &spotlight.m_OuterCutOff, 0.1);
-			ImGui::DragFloat("SL Intensity", &spotlight.m_Intensity, 0.1, 0.f, 100.f);
+			if (ImGui::CollapsingHeader("Scene Options")) {
+				ImGui::Checkbox("Toggle Plane", &togglePlane);
+			}
 
-			ImGui::Checkbox("Toggle Plane", &togglePlane);
-			ImGui::Checkbox("Toggle Shadow", &toggleShadows);
+			if (ImGui::CollapsingHeader("Direction Light Options")) {
+				ImGui::LabelText("", "Directional Light");
+				ImGui::DragFloat3("Light Rotation", (float*)&directionalLight.m_rotation, 0.1);
+				ImGui::SliderFloat("Directional Light Intensity", &directionalLight.m_intensity, 0, 5.f);
+			}
+
+			if (ImGui::CollapsingHeader("Point Light Options")) {
+
+				if (ImGui::CollapsingHeader("Point Light [0] Options")) {
+					ImGui::DragFloat4("PL [0] Position", (float*)&pointLights[0].m_Position, 0.1);
+					ImGui::ColorEdit4("PL [0] Colour", (float*)&pointLights[0].m_Colour);
+					ImGui::SliderFloat( "PL [0] Intensity", &pointLights[0].m_Colour.w, 0, 5000);
+				}
+
+				if (ImGui::CollapsingHeader("Point Light [1] Options")) {
+					ImGui::DragFloat4("PL [1] Position", (float*)&pointLights[1].m_Position, 0.1);
+					ImGui::ColorEdit4("PL [1] Colour", (float*)&pointLights[1].m_Colour);
+					ImGui::SliderFloat("PL [1] Intensity", &pointLights[1].m_Colour.w, 0, 5000);
+				}
+
+				if (ImGui::CollapsingHeader("Point Light [2] Options")) {
+					ImGui::DragFloat4("PL [2] Position", (float*)&pointLights[2].m_Position, 0.1);
+					ImGui::ColorEdit4("PL [2] Colour", (float*)&pointLights[2].m_Colour);
+					ImGui::SliderFloat("PL [2] Intensity", &pointLights[2].m_Colour.w, 0, 5000);
+				}
+
+				if (ImGui::CollapsingHeader("Point Light [3] Options")) {
+					ImGui::DragFloat4("PL [3] Position", (float*)&pointLights[3].m_Position, 0.1);
+					ImGui::ColorEdit4("PL [3] Colour", (float*)&pointLights[3].m_Colour);
+					ImGui::SliderFloat("PL [3] Intensity", &pointLights[3].m_Colour.w, 0, 5000);
+				}
+
+			}
+
+
 			ImGui::End();
 		}
 		
@@ -318,20 +337,28 @@ int main() {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, tex_output);
 	
+		if (lastCameraDir != camera.getCameraDirection() || lastCameraPos != camera.GetCameraPosition()) {
+			u_sample = 0;
+		}
+
+		if (!noSample) {
+			shader.Set1f(u_sample, "u_sample");
+		} else {
+			shader.Set1f(0, "u_sample");
+		} 
+
 		glUniformMatrix4fv(shader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(obj.GetModel()));
 		glUniformMatrix4fv(shader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(camera.CalculateProjectionMatrix(window.GetBufferWidth(), window.GetBufferHeight())));
 		shader.Set1i(0, "u_TextureA");
-		shader.Set1f(u_sample, "u_sample");
+
+
+		shader.Set2f(glm::vec2(window.GetBufferWidth(), window.GetBufferHeight()), "u_Resolution");
 		obj.UpdateModel();
 		obj.Render();
 
-		if (lastCameraDir != camera.getCameraDirection() || lastCameraPos != camera.GetCameraPosition() || sampleReset == true) {
-			u_sample = 0;
-		}
-		else if (u_sample < maxSample) {
-			u_sample += 1.f;
-		}
-    
+
+		u_sample += 1.f;
+
 		glUseProgram(0);
 		GuiLayer.End();
 		

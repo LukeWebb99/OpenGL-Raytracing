@@ -95,7 +95,7 @@ void Shader::Set1f(GLfloat value, const GLchar* name)
 	glUniform1f(glGetUniformLocation(shaderID, name), value);
 }
 
-void Shader::SetUniformMat4f(const char* uniformName, glm::mat4 value, bool transpose)
+void Shader::SetMat4f(const char* uniformName, glm::mat4 value, bool transpose)
 {
 	glUniformMatrix4fv(glGetUniformLocation(shaderID, uniformName), 1, transpose, glm::value_ptr(value));
 }
