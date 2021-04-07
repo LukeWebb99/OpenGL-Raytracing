@@ -9,7 +9,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <SOIL2/SOIL2.h>
 
 #include "Window.h"
 #include "GuiLayer.h"
@@ -102,14 +101,15 @@ struct PointLight {
 	glm::vec4 m_Position;
 };
 
-Texture skybox("Textures/SkyboxHDRs/cape_hill_4k.hdr"); // Load skyobx
+Texture skybox("Textures/SkyboxHDRs/urban_alley_01_4k.hdr"); // Load skyobx
 
+/*
 Texture Albedo   ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Albedo_4K__schvfgwp.jpg");
 Texture Normal   ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Normal_4K__schvfgwp.jpg");
 Texture Roughness("Textures/PBR/Gold (Au)_schvfgwp_Metal/Roughness_4K__schvfgwp.jpg");
 Texture AO       ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Metalness_4K__schvfgwp.jpg");
 Texture Metallic ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Metalness_4K__schvfgwp.jpg");
-
+*/
 /*
 Texture Albedo   ("Textures/PBR/Dirty Metal Sheet/Albedo_4K__vbsieik.jpg");
 Texture Normal   ("Textures/PBR/Dirty Metal Sheet/Normal_4K__vbsieik.jpg");
@@ -118,13 +118,11 @@ Texture AO       ("Textures/PBR/Dirty Metal Sheet/AO_4K__vbsieik.jpg");
 Texture Metallic ("Textures/PBR/Dirty Metal Sheet/Roughness_4K__vbsieik.jpg");
 */
 
-/*
 Texture Albedo   ("Textures/PBR/rustediron1-alt2-bl/rustediron2_basecolor.png");
 Texture Normal   ("Textures/PBR/rustediron1-alt2-bl/rustediron2_normal.png");
 Texture Roughness("Textures/PBR/rustediron1-alt2-bl/rustediron2_roughness.png");
 Texture AO       ("Textures/PBR/rustediron1-alt2-bl/rustediron2_ao.png");
 Texture Metallic ("Textures/PBR/rustediron1-alt2-bl/rustediron2_metallic.png");
-*/
 
 
 int main() {
@@ -146,7 +144,6 @@ int main() {
 
 	Shader compute; 
 	compute.CreateFromFile("Shaders/Compute.glsl");
-	//compute.QueryWorkgroups();
 
 	Mesh obj;
 	obj.Create(quadVerts, quadIndices, 32, 6); 
@@ -162,7 +159,7 @@ int main() {
 
 	compute.Bind();
 
-	GLuint tex_output = 0; //TODO move this into texture class
+	GLuint tex_output = 0;
 	int tex_w = window.GetBufferWidth(), tex_h = window.GetBufferHeight(); { // create the texture
 		glGenTextures(1, &tex_output);
 		glActiveTexture(0);
@@ -235,7 +232,7 @@ int main() {
 	glm::vec3 lastCameraPos, lastCameraDir;
 
 	float u_metallic = 0.2f, u_ao = 0.3f, u_roughness = 0.1;
-
+	float b = 1.5f;
 	while (window.IsOpen()) {
 	
 		window.Update();
@@ -257,7 +254,7 @@ int main() {
 		compute.Set1i(togglePlane, "u_togglePlane");
 		compute.Set1f(Random::Get().Int(0, 1000), "u_seed");
 		compute.Set1i(bounceLimit, "u_rayBounceLimit");
-
+		compute.Set1f(b, "b");
 
 
 		glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
@@ -284,6 +281,7 @@ int main() {
 			if (ImGui::CollapsingHeader("Renderer Options")) {
 				ImGui::SliderInt("BounceLimit", &bounceLimit, 0, 10);
 				ImGui::Checkbox("No Sample", &noSample);
+				ImGui::DragFloat("b", &b, 0.001);
 			}
 
 			if (ImGui::CollapsingHeader("Camera Options")) {
@@ -350,7 +348,6 @@ int main() {
 		glUniformMatrix4fv(shader.GetModelLocation(), 1, GL_FALSE, glm::value_ptr(obj.GetModel()));
 		glUniformMatrix4fv(shader.GetProjectionLocation(), 1, GL_FALSE, glm::value_ptr(camera.CalculateProjectionMatrix(window.GetBufferWidth(), window.GetBufferHeight())));
 		shader.Set1i(0, "u_TextureA");
-
 
 		shader.Set2f(glm::vec2(window.GetBufferWidth(), window.GetBufferHeight()), "u_Resolution");
 		obj.UpdateModel();

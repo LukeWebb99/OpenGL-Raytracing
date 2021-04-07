@@ -212,7 +212,7 @@ void Texture::CreateCubemapFromHDRI(Texture HDRI) {
 	equirectangularToCubemapShader.Bind();
 	equirectangularToCubemapShader.Set1i(0, "u_equirectangularMap");
 	equirectangularToCubemapShader.SetMat4f("u_projection", captureProjection, false);
-	
+
 	glViewport(0, 0, 512, 512);
 	glBindFramebuffer(GL_FRAMEBUFFER, m_captureFBO);
 	for (unsigned int i = 0; i < 6; i++)
@@ -379,5 +379,5 @@ void Texture::CreateBRDFLookUpTable() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glDeleteFramebuffers(1, &m_captureFBO);
 	glDeleteRenderbuffers(1, &m_captureRBO);
-	
+
 }

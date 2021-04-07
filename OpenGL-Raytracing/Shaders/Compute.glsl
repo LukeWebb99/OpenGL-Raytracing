@@ -56,6 +56,8 @@ uniform float u_seed;
 float l_seed;
 ivec2 pixel_coords;
 
+uniform float b;
+
 bool hitsky = false;
 
 float rand() {
@@ -111,6 +113,8 @@ struct RayHit {
     vec3 normal;
 	vec3 specular;
     float roughness;
+    float metallic;
+    float ao;
 };
 
 RayHit CreateRayHit() {
@@ -120,6 +124,9 @@ RayHit CreateRayHit() {
     hit.normal = vec3(0.0f, 0.0f, 0.0f);
     hit.specular = vec3(0.f, 0.f, 0.f);
     hit.albedo = vec3(0.f, 0.f, 0.f);
+    hit.roughness = 0.f;
+    hit.ao = 1.f;
+    hit.metallic = 0.f;
     return hit;
 }
 
@@ -154,9 +161,12 @@ void IntersectSphere(Ray ray, inout RayHit bestHit, Sphere sphere) {
         bestHit.distance = t;
         bestHit.position = ray.origin + t * ray.direction;
         bestHit.normal = normalize(bestHit.position - sphere.position);
-        bestHit.albedo = pow(texture(u_AlbedoMap, bestHit.normal.xy).rgb, vec3(2.2));
+        vec2 SphereNormals = vec2( acos( bestHit.normal.y) / -PI, atan(bestHit.normal.x, bestHit.normal.z) / -PI * 0.5f);
+        bestHit.albedo = pow(texture(u_AlbedoMap, SphereNormals).rgb, vec3(2.2));
         bestHit.specular = sphere.specular;
-        bestHit.roughness = texture(u_RoughnessMap, bestHit.normal.xy).r;
+        bestHit.roughness = texture(u_RoughnessMap, SphereNormals).r;
+        bestHit.metallic =  texture(u_MetallicMap, SphereNormals).r;
+        bestHit.ao = texture(u_AOMap, SphereNormals).r;
     }
 }
 
@@ -191,6 +201,7 @@ bool IntersectTriangle(Ray ray, vec3 vert0, vec3 vert1, vec3 vert2, inout float 
 }
 
 RayHit Trace(Ray ray) {
+
     RayHit bestHit = CreateRayHit();
     
     if(u_togglePlane){
@@ -199,22 +210,22 @@ RayHit Trace(Ray ray) {
 
     IntersectSphere(ray, bestHit, u_sphere);
     
-    // Trace single triangle
-    //vec3 v0 = vec3(-15, 0, -15);
-    //vec3 v1 = vec3( 15, 0, -15);
-    //vec3 v2 = vec3(0, 15 * sqrt(2), -15);
-    //float t, u, v;
-    //if (IntersectTriangle(ray, v0, v1, v2, t, u, v)) {
-    //
-    //   if (t > 0 && t < bestHit.distance) {
-    //     bestHit.distance = t;
-    //     bestHit.position = ray.origin + t * ray.direction;
-    //     bestHit.normal = normalize(cross(v1 - v0, v2 - v0));
-    //     bestHit.albedo = vec3(0.55f);
-    //     bestHit.specular = 0.65f * vec3(1, 0.4f, 0.2f);
-    //     bestHit.roughtness = 0.0f;
-    //     }
-    // }
+    //Trace single triangle
+   //vec3 v0 = vec3(-15, 0, -15);
+   //vec3 v1 = vec3( 15, 0, -15);
+   //vec3 v2 = vec3(0, 15 * sqrt(2), -15);
+   //float t, u, v;
+   //if (IntersectTriangle(ray, v0, v1, v2, t, u, v)) {
+   //
+   //   if (t > 0 && t < bestHit.distance) {
+   //     bestHit.distance = t;
+   //     bestHit.position = ray.origin + t * ray.direction;
+   //     bestHit.normal = normalize(cross(v1 - v0, v2 - v0));
+   //     bestHit.albedo = vec3(0.55f);
+   //     bestHit.specular = vec3(0.f);
+   //     bestHit.roughness = 0.1f;
+   //     }
+   // }
 
     return bestHit;
 
@@ -319,47 +330,42 @@ vec3 CalcPointLights(vec3 albedo, vec3 normal, float metallic, float roughness, 
         float NdotL = max(dot(N, L), 0.0);        
 
         //shadow
-        Ray shadowRay = CreateRay(hit.position + hit.normal * 0.001f, u_pointLights[i].Pos.xyz);
-        RayHit shadowHit = Trace(shadowRay);
-        shadowHit.distance;
+        Ray shadowRay0 = CreateRay(hit.position + hit.normal * 0.001f, L);
+        RayHit shadowHit0 = Trace(shadowRay0);
    
         // add to outgoing radiance Lo
-        if(shadowHit.distance == infinity){
+        if(shadowHit0.distance == infinity) {
             Lo += (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
-        } else {
-            Lo += vec3(0.f);
         }
     }
       
-    
     return Lo;
 
 } 
 
+float energy(vec3 color) {
+    return dot(color, vec3(1.0 / 3.0));
+}
+
 //MAIN CALC
 vec3 Shade(inout Ray ray, RayHit hit) {
 
-   //https://youtu.be/WfLnEgxFj0M
+   float theta = acos(ray.direction.y) / -PI;
+   float phi = atan(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
    vec2 SphereNormals = vec2( acos( hit.normal.y) / -PI, atan(hit.normal.x, hit.normal.z) / -PI * 0.5f);
 
    if (hit.distance < infinity) {
 
-        float l_metallic  = texture(u_MetallicMap, SphereNormals).r;
-        float l_ao        = texture(u_AOMap, SphereNormals).r;
-
         ray.origin = hit.position + hit.normal * 0.001f;
-        if(hit.roughness < 0.5f) {
-            ray.direction = reflect(ray.direction, hit.normal) + (normalize(vec3(rand(), rand(), rand()))*hit.roughness*0.5);
+        if(hit.roughness < 0.8) {
+            ray.direction = reflect(ray.direction, hit.normal) + (normalize(vec3(rand(), rand(), rand())) * hit.roughness * 0.5);
         } else {
             ray.direction = vec3(0.f);
         }
-
-        ray.energy *= (hit.albedo * l_ao)
-        + CalcPointLights(hit.albedo, hit.normal, l_metallic, hit.roughness, l_ao, ray, hit)
+        
+        ray.energy *= (hit.albedo * hit.ao)
+        + CalcPointLights(hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
         + CalcDirectLight(hit);
-
-        vec3 F0 = vec3(0.04); 
-        F0 = mix(F0, hit.albedo, l_metallic);
 
         return vec3(0.0);
 
@@ -367,11 +373,8 @@ vec3 Shade(inout Ray ray, RayHit hit) {
         
         hitsky = true;
 
-        float theta = acos(ray.direction.y) / -PI;
-        float phi = atan(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
-
-        // HDR tonemapping
         vec3 colour = texture(u_skyboxTexture, vec2(phi, theta)).xyz;
+        // HDR tonemapping
         colour = colour / (colour + vec3(1.0));
         // gamma correct
         colour = pow(colour, vec3(1.0/2.2)); 
