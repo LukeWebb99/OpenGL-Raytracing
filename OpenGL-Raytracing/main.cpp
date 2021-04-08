@@ -97,11 +97,41 @@ void SetSphere(Shader* shader, Sphere sphere, const char* uniform) {
 }
 
 struct PointLight {
+	PointLight() {}
+	PointLight(glm::vec4 colour, glm::vec4 position) {
+		m_Colour = colour;
+		m_Position = position;
+	}
 	glm::vec4 m_Colour;
 	glm::vec4 m_Position;
 };
 
-Texture skybox("Textures/SkyboxHDRs/urban_alley_01_4k.hdr"); // Load skyobx
+struct SpotLight
+{
+	SpotLight(glm::vec4 colour, glm::vec3 position, glm::vec3 direction, float innerCuttoff, float outerCuttoff) {
+		m_base.m_Colour = colour;
+		m_base.m_Position = glm::vec4(position, 1.f);
+		m_direction = direction;
+		m_cuttoff = innerCuttoff;
+		m_outerCuttoff = outerCuttoff;
+	}
+	PointLight m_base;
+	glm::vec3 m_direction;
+	float m_cuttoff;
+	float m_outerCuttoff;
+};
+
+void SetSpotLight(SpotLight light, Shader* shader) {
+
+	shader->SetVec4f(light.m_base.m_Colour, "u_spotlight.base.Colour");
+	shader->SetVec4f(light.m_base.m_Position, "u_spotlight.base.Pos");
+	shader->SetVec3f(light.m_direction, "u_spotlight.Direction");
+	shader->Set1f(light.m_cuttoff, "u_spotlight.Cuttoff");
+	shader->Set1f(light.m_outerCuttoff, "u_spotlight.OuterCuttoff");
+
+}
+
+Texture skybox("Textures/SkyboxHDRs/cape_hill_4k.hdr"); // Load skyobx
 
 /*
 Texture Albedo   ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Albedo_4K__schvfgwp.jpg");
@@ -110,19 +140,19 @@ Texture Roughness("Textures/PBR/Gold (Au)_schvfgwp_Metal/Roughness_4K__schvfgwp.
 Texture AO       ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Metalness_4K__schvfgwp.jpg");
 Texture Metallic ("Textures/PBR/Gold (Au)_schvfgwp_Metal/Metalness_4K__schvfgwp.jpg");
 */
-/*
-Texture Albedo   ("Textures/PBR/Dirty Metal Sheet/Albedo_4K__vbsieik.jpg");
-Texture Normal   ("Textures/PBR/Dirty Metal Sheet/Normal_4K__vbsieik.jpg");
-Texture Roughness("Textures/PBR/Dirty Metal Sheet/Roughness_4K__vbsieik.jpg");
-Texture AO       ("Textures/PBR/Dirty Metal Sheet/AO_4K__vbsieik.jpg");
-Texture Metallic ("Textures/PBR/Dirty Metal Sheet/Roughness_4K__vbsieik.jpg");
-*/
+Texture Albedo   ("Textures/PBR/marble_polished_vdkgdbpv/vdkgdbpv_4K_Albedo.jpg");
+Texture Normal   ("Textures/PBR/marble_polished_vdkgdbpv/vdkgdbpv_4K_Normal.jpg");
+Texture Roughness("Textures/PBR/marble_polished_vdkgdbpv/vdkgdbpv_4K_Roughness.jpg");
+Texture AO       ("Textures/PBR/marble_polished_vdkgdbpv/vdkgdbpv_4K_AO.jpg");
+Texture Metallic ("Textures/PBR/marble_polished_vdkgdbpv/vdkgdbpv_4K_Metalness.jpg");
 
+/*
 Texture Albedo   ("Textures/PBR/rustediron1-alt2-bl/rustediron2_basecolor.png");
 Texture Normal   ("Textures/PBR/rustediron1-alt2-bl/rustediron2_normal.png");
 Texture Roughness("Textures/PBR/rustediron1-alt2-bl/rustediron2_roughness.png");
 Texture AO       ("Textures/PBR/rustediron1-alt2-bl/rustediron2_ao.png");
 Texture Metallic ("Textures/PBR/rustediron1-alt2-bl/rustediron2_metallic.png");
+*/
 
 
 int main() {
@@ -182,12 +212,12 @@ int main() {
 	AO.CreateTexture2D();
 	Metallic.CreateTexture2D();
 	
+	SpotLight spotlight(glm::vec4(1, 1, 1, 0), glm::vec3(0, 100, 0), glm::vec3(0, -1, 0), 0.5, 0.0);
+
 	std::vector<PointLight> pointLights;
 
 	for (size_t i = 0; i < 4; i++) {
-		PointLight tempLight;
-		tempLight.m_Position = glm::vec4(0, 100, 0, 0);
-		tempLight.m_Colour = glm::vec4(1, 1, 1, 0);
+		PointLight tempLight(glm::vec4(0, 100, 0, 0), glm::vec4(1, 1, 1, 0));
 		pointLights.push_back(tempLight);
 	}
 	
@@ -254,8 +284,7 @@ int main() {
 		compute.Set1i(togglePlane, "u_togglePlane");
 		compute.Set1f(Random::Get().Int(0, 1000), "u_seed");
 		compute.Set1i(bounceLimit, "u_rayBounceLimit");
-		compute.Set1f(b, "b");
-
+		SetSpotLight(spotlight, &compute);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, pointlightUBO);
 		for (size_t i = 0; i < 4; i++) {
@@ -326,6 +355,14 @@ int main() {
 
 			}
 
+			if (ImGui::CollapsingHeader("Spot light Options")) {
+				ImGui::DragFloat4("SL Position", (float*)&spotlight.m_base.m_Position, 0.1);
+				ImGui::SliderFloat3("SL Direction", (float*)&spotlight.m_direction, -1, 1);
+				ImGui::ColorEdit4("SL Colour", (float*)&spotlight.m_base.m_Colour);
+				ImGui::SliderFloat("SL Intensity", &spotlight.m_base.m_Colour.w, 0, 5000);
+				ImGui::SliderFloat("SL Inner Cutoff", &spotlight.m_cuttoff, 0.f, 1.f);
+				ImGui::SliderFloat("SL Outer Cutoff", &spotlight.m_outerCuttoff, 0.f, 1.f);
+			}
 
 			ImGui::End();
 		}

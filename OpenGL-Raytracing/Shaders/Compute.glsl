@@ -10,8 +10,7 @@ struct PointLight {
 };
 
 struct Spotlight {
-    vec4 Colour;
-    vec3 Pos;
+    PointLight base;
     vec3 Direction;
     float Cuttoff;
     float OuterCuttoff;
@@ -284,7 +283,7 @@ vec3 CalcDirectLight(RayHit hit) {
     }
 }
 
-vec3 CalcPointLights(vec3 albedo, vec3 normal, float metallic, float roughness, float ao, inout Ray ray, RayHit hit) {
+vec3 CalcPointLight(PointLight light, vec3 albedo, vec3 normal, float metallic, float roughness, float ao, inout Ray ray, RayHit hit) {
 
     vec3 N = normal;
     vec3 V = normalize(ray.origin - hit.position);
@@ -298,50 +297,69 @@ vec3 CalcPointLights(vec3 albedo, vec3 normal, float metallic, float roughness, 
 
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 4; i++) {
-        // calculate per-light radiance
-        vec3 L = normalize(u_pointLights[i].Pos.xyz -  hit.position);
-        vec3 H = normalize(V + L);
-        float distance = length(u_pointLights[i].Pos.xyz -  hit.position);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = u_pointLights[i].Colour.rgb * u_pointLights[i].Colour.w * attenuation;
+  
+    // calculate per-light radiance
+    vec3 L = normalize(light.Pos.xyz -  hit.position);
+    vec3 H = normalize(V + L);
+    float distance = length(light.Pos.xyz -  hit.position);
+    float attenuation = 1.0 / (distance * distance);
+    vec3 radiance = light.Colour.rgb * light.Colour.w * attenuation;
 
-        // Cook-Torrance BRDF
-        float NDF = DistributionGGX(N, H, roughness);   
-        float G   = GeometrySmith(N, V, L, roughness);    
-        vec3 F    = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);    
+    // Cook-Torrance BRDF
+    float NDF = DistributionGGX(N, H, roughness);   
+    float G   = GeometrySmith(N, V, L, roughness);    
+    vec3 F    = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);    
+    
+    vec3 nominator    = NDF * G * F;
+    float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // 0.001 to prevent divide by zero.
+    vec3 specular = nominator / denominator;
+    
+     // kS is equal to Fresnel
+    vec3 kS = F;
+    // for energy conservation, the diffuse and specular light can't
+    // be above 1.0 (unless the surface emits light); to preserve this
+    // relationship the diffuse component (kD) should equal 1.0 - kS.
+    vec3 kD = vec3(1.0) - kS;
+    // multiply kD by the inverse metalness such that only non-metals 
+    // have diffuse lighting, or a linear blend if partly metal (pure metals
+    // have no diffuse light).
+    kD *= 1.0 - metallic;	                
         
-        vec3 nominator    = NDF * G * F;
-        float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; // 0.001 to prevent divide by zero.
-        vec3 specular = nominator / denominator;
-        
-         // kS is equal to Fresnel
-        vec3 kS = F;
-        // for energy conservation, the diffuse and specular light can't
-        // be above 1.0 (unless the surface emits light); to preserve this
-        // relationship the diffuse component (kD) should equal 1.0 - kS.
-        vec3 kD = vec3(1.0) - kS;
-        // multiply kD by the inverse metalness such that only non-metals 
-        // have diffuse lighting, or a linear blend if partly metal (pure metals
-        // have no diffuse light).
-        kD *= 1.0 - metallic;	                
-            
-        // scale light by NdotL
-        float NdotL = max(dot(N, L), 0.0);        
+    // scale light by NdotL
+    float NdotL = max(dot(N, L), 0.0);        
 
-        //shadow
-        Ray shadowRay0 = CreateRay(hit.position + hit.normal * 0.001f, L);
-        RayHit shadowHit0 = Trace(shadowRay0);
+    //shadow
+    Ray shadowRay0 = CreateRay(hit.position + hit.normal * 0.001f, L);
+    RayHit shadowHit0 = Trace(shadowRay0);
    
-        // add to outgoing radiance Lo
-        if(shadowHit0.distance == infinity) {
-            Lo += (kD * albedo / PI + specular) * radiance * NdotL; // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
-        }
+    if(shadowHit0.distance == infinity) {
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL; 
     }
-      
-    return Lo;
+    
+   
+    return  Lo;
 
 } 
+
+vec3 CalcSpotLight(Spotlight light, vec3 albedo, vec3 normal, float metallic, float roughness, float ao, inout Ray ray, RayHit hit){
+    
+    vec3 V = normalize(ray.origin - hit.position);
+    vec3 lightDir = normalize(-light.base.Pos.xyz - hit.position);
+    float theta = dot(lightDir, normalize(light.Direction));
+    float epsilon = light.Cuttoff- light.OuterCuttoff;
+    float hardness = clamp((theta -  light.Cuttoff) / epsilon, 0.0, 1.0);
+    
+    float distance = length(light.base.Pos.xyz - hit.position);
+    float attenuation = 1.0 / (distance * distance);
+    
+    vec3 colour = CalcPointLight(light.base, albedo, normal, metallic, roughness, ao, ray, hit);
+
+    if(theta > light.Cuttoff) 
+    {   
+        return (colour * hardness);
+    }
+    return vec3(0.f);
+}
 
 float energy(vec3 color) {
     return dot(color, vec3(1.0 / 3.0));
@@ -357,14 +375,18 @@ vec3 Shade(inout Ray ray, RayHit hit) {
    if (hit.distance < infinity) {
 
         ray.origin = hit.position + hit.normal * 0.001f;
-        if(hit.roughness < 0.8) {
-            ray.direction = reflect(ray.direction, hit.normal) + (normalize(vec3(rand(), rand(), rand())) * hit.roughness * 0.5);
+        if(hit.roughness < hit.metallic) {
+            ray.direction = reflect(ray.direction, hit.normal) + (normalize(vec3(rand(), rand(), rand())) * hit.roughness);
         } else {
             ray.direction = vec3(0.f);
         }
-        
+
         ray.energy *= (hit.albedo * hit.ao)
-        + CalcPointLights(hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
+        + CalcPointLight(u_pointLights[0], hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
+        + CalcPointLight(u_pointLights[1], hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
+        + CalcPointLight(u_pointLights[2], hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
+        + CalcPointLight(u_pointLights[3], hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
+        + CalcSpotLight(u_spotlight, hit.albedo, hit.normal, hit.metallic, hit.roughness, hit.ao, ray, hit)
         + CalcDirectLight(hit);
 
         return vec3(0.0);
